@@ -1,0 +1,83 @@
+name: Build ndns api
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Build ndns api
+    strategy:
+      matrix:
+        include:
+          - rusttarget: aarch64-unknown-linux-gnu
+            zigtarget: aarch64-linux-gnu
+            platform: arm64
+          - rusttarget: x86_64-unknown-linux-gnu
+            zigtarget: x86_64-linux-gnu
+            platform: amd64
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout master branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: neodyland/cross-rust-action@v0.0.7
+        with:
+          zigtarget: ${{ matrix.zigtarget }}
+          rusttarget: ${{ matrix.rusttarget }}
+          cargo-build-args: --release
+
+      - name: Rename artifact
+        run: |
+          mv target/${{ matrix.rusttarget }}/release/ndns ndns-${{ matrix.platform }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ndns-${{ matrix.platform }}
+          path: ndns-${{ matrix.platform }}
+
+  release:
+    name: Release docker image
+    runs-on: ubuntu-latest
+    needs: [build]
+    env:
+      GH_TOKEN: ${{ github.token }}
+      IMAGE_NAME: ndns
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - run: gh run download ${{ github.run_id }} -p ndns-*
+
+      - run: mkdir .out
+
+      - run: mv ndns-*/ndns-* .out/
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          platforms: linux/amd64,linux/arm64
+          file: ./.github/workflows/build.Dockerfile
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
+            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ github.sha }}

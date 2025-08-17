@@ -1,0 +1,28 @@
+[package]
+name = "ndns"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+async-trait = "0.1.89"
+hickory-server = { git = "https://github.com/hickory-dns/hickory-dns", version = "0.26.0-alpha.1", features = ["dnssec-ring", "h3-ring", "https-ring", "quic-ring",  "webpki-roots"] }
+hickory-client = { git = "https://github.com/hickory-dns/hickory-dns", version = "0.26.0-alpha.1", features = ["dnssec-ring", "h3-ring", "https-ring", "quic-ring",  "webpki-roots"] }
+hickory-proto = { git = "https://github.com/hickory-dns/hickory-dns", version = "0.26.0-alpha.1", features = ["dnssec-ring", "h3-ring", "https-ring", "quic-ring"] }
+anyhow = "1.0.99"
+fxhash = "0.2.1"
+env_logger = "0.11.8"
+log = "0.4.27"
+dotenvy = "0.15.7"
+tokio = { version = "1.47.1", features = ["macros", "rt-multi-thread", "fs"] }
+url = "2.5.4"
+rustls = { version = "0.23.31", default-features = false, features = ["ring"] }
+rustls-pemfile = "2.2.0"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+strip = true
+opt-level = "s"
+debug-assertions = false
+overflow-checks = false
+panic = "abort"
